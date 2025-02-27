@@ -10,7 +10,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct tree{
+	int freq;
+	unsigned char *data;
+	tree_t *left;
+	tree_t *right;
+} tree_t;
 
+void write_tree(tree_t *root, FILE *new_file);
 
 // FUNCTIONS FOR READING AND WRITING
 
@@ -30,115 +37,13 @@
 
 
 
-/* compress
- *
- * This function takes an input file and compresses it using RLE.
- *
- * inputs: input_file, output_file (strings)
- * output: void
- */
-void compress(const char *input_file, const char *output_file) {
-    
-    FILE *input_file_ptr = fopen(input_file, "rb");
-    FILE *output_file_ptr = fopen(output_file, "wb");
-    
-    // Error opening either of the files.
-    if (input_file_ptr == NULL) {
-	printf("Error opening the input file.\n");
-	fclose(input_file_ptr);
-	exit(1);
-    }
-    
-    if (output_file_ptr == NULL) {
-	printf("Error opening the output file.\n");
-	fclose(output_file_ptr);
-	exit(1);
-    }
-    
-    unsigned char current_byte, next_byte, number_of_byte;
-
-    // Read one byte at a time into current_byte until the end of the file.
-    while(fread(&current_byte, 1, 1, input_file_ptr)) {
-	number_of_byte = 1;	
-
-	// Read the next byte and if it matches, increment number_of_byte until no more duplicates.
-	while(fread(&next_byte, 1, 1, input_file_ptr) && (next_byte == current_byte)) {
-	    number_of_byte++;
-
-	    /* Because the byte's number is an unsigned character, it cannot
-	     * go over 255. When it reaches 255, it will be reset to 0.
-	     */
-	    if (number_of_byte == 255) {
-		fwrite(&number_of_byte, 1, 1, output_file_ptr);
-		fwrite(&current_byte, 1, 1, output_file_ptr);
-		number_of_byte = 0; // reset back to 0 for next run
-	    }
-	} // When this condition is skipped, next_byte does not equal current_byte.
-
-	if (number_of_byte > 0) {
-	    fwrite(&number_of_byte, 1, 1, output_file_ptr);
-	    fwrite(&current_byte, 1, 1, output_file_ptr);
-	}
-    
-	// Moving the file pointer back one byte to properly read in more data at the right current_byte spot.
-	if (next_byte != current_byte) {
-	    fseek(input_file_ptr, -1, SEEK_CUR);
-	}
-    } // When this condition is skipped, the file pointer has reached the end of the file. 
-    
-    fclose(input_file_ptr);
-    fclose(output_file_ptr);
-}
-
-/* decompress
- *
- * This function needs to do the opposite of compress.
- * Takes an input file and decompresses it from RLE format back to normal.
- * 
- * inputs: input_file, output_file (strings)
- * outputs: void
- */
-void decompress(const char *input_file, const char *output_file) {
-
-    // EZPZ 
-
-    FILE *input_file_ptr = fopen(input_file, "rb");
-    FILE *output_file_ptr = fopen(output_file, "wb");
-    
-    // Error opening either of the files.
-    if (input_file_ptr == NULL) {
-	printf("Error opening the input file.\n");
-	fclose(input_file_ptr);
-	exit(1);
-    }
-    
-    if (output_file_ptr == NULL) {
-	printf("Error opening the output file.\n");
-	fclose(output_file_ptr);
-	exit(1);
-    }
-    
-    unsigned char byte;
-    unsigned char number_of_byte; // Keeps track of repetitions of the byte.
-    int i;
-
-    /* Read the number of repetitions of the byte until the end of the file. 
-     * Will always come in pairs (# : <byte>). 
-     */
-    while(fread(&number_of_byte, 1, 1, input_file_ptr)) /*This grabs the #.*/ {
-	fread(&byte, 1, 1, input_file_ptr); 
-
-	// Write the same byte # times.
-	for (i = 0; i < number_of_byte; i++) {
-	    fwrite(&byte, 1, 1, output_file_ptr);
-	}
-    } // When this condition is skipped, the file pointer has reached the end of the file. 
-    
-    fclose(input_file_ptr);
-    fclose(output_file_ptr);
-}
 
 int main(int argc, char *argv[]){
+	FILE *og_file, *new_file;
+	long int file_size;
+	unsigned char *file_data;
+	tree_t *root;
+
 	
 	// Checking for 4 args and the c or d flag. 	
 	if ((argc != 4) || ((strcmp("c", argv[3]) != 0) && (strcmp("d", argv[3]) != 0))) {
@@ -148,15 +53,44 @@ int main(int argc, char *argv[]){
 		exit(1);
 	}
 
+	og_file = fopen(argv[1], "rb");
+	if(og_file == NULL){
+		printf("\n\nFailed to open input file\n");
+		exit(0);
+	}
+
+	//finds the file size
+	fseek(og_file, 0, SEEK_END);
+    file_size = ftell(og_file);
+    rewind(og_file);
+
+	new_file = fopen(argv[2], "wb");
+	if(new_file == NULL){
+		printf("\n\nFailed to open output file\n");
+		exit(0);
+	}
+
+	file_data = (unsigned char *)malloc(file_size); 
+	fread(file_data, 1, file_size, og_file);
+
 	// COMPRESSING
 	if (strcmp(argv[3], "c") == 0) {
-	    compress(argv[1], argv[2]);
+	    //build tree function
+		write_tree(root, new_file);
+		//output data to file
 	}
 	
 	// DECOMPRESSING
 	else {
-	    decompress(argv[1], argv[2]);
+	    
 	}
+
+	//free tree
 	
 	return 0;
+}
+
+void write_tree(tree_t *root, FILE *new_file){
+
+
 }
