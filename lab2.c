@@ -1,10 +1,8 @@
-/* Carl Tuck
+/* Carl Tuck & Ethan Sumner
  * ECE 4680
- * Lab 2
- * 6 Feb '25
+ * Lab 4
+ * 4 March '25
  */
-
-
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,7 +15,8 @@ typedef struct tree{
 	tree_t *right;
 } tree_t;
 
-void write_tree(tree_t *root, FILE *new_file);
+long int write_tree(tree_t *root, unsigned char *file_data, unsigned char *final_byte);
+unsigned char write_bit(unsigned char bit, unsigned char *file_data, long int size);
 
 // FUNCTIONS FOR READING AND WRITING
 
@@ -40,8 +39,8 @@ void write_tree(tree_t *root, FILE *new_file);
 
 int main(int argc, char *argv[]){
 	FILE *og_file, *new_file;
-	long int file_size;
-	unsigned char *file_data;
+	long int file_size, tree_size;
+	unsigned char *file_data, *new_data, final_byte;
 	tree_t *root;
 
 	
@@ -75,9 +74,14 @@ int main(int argc, char *argv[]){
 
 	// COMPRESSING
 	if (strcmp(argv[3], "c") == 0) {
-	    //build tree function
-		write_tree(root, new_file);
-		//output data to file
+	    //build tree function here
+
+		tree_size = write_tree(root, new_data, &final_byte);
+		fwrite(tree_size, sizeof(long int), 1, new_file);
+		fwrite(new_data, 1, tree_size/8, new_file);
+		if(tree_size % 8 != 0) fwrite(&final_byte, 1, 1, new_file);
+
+		//output data to file here
 	}
 	
 	// DECOMPRESSING
@@ -90,7 +94,58 @@ int main(int argc, char *argv[]){
 	return 0;
 }
 
-void write_tree(tree_t *root, FILE *new_file){
+/*
+tree_t *root: root of the huffman tree
+unsigned char *file_data: block to write full bytes to
+unsigned char *final_byte: contains last few bits if (file_size % 8 != 0)
+
+return: size of the tree in bits
+*/
+long int write_tree(tree_t *root, unsigned char *file_data, unsigned char *final_byte){
+	static long int file_size;
+	static int count;
+
+	if(root == NULL) return 0;
+
+	file_size++;
+	if(root->data != NULL){
+		//writes 1 for leaf node
+		*final_byte = write_bit(0x01, file_data, file_size);
+		for(int i = 7; i >= 0; i--){
+			//writes each individual bit of the char on the leaf
+			file_size++;
+			*final_byte = write_bit((root->data[0] >> i) & 0x01, file_data, file_size);
+		}
+	}
+	else{
+		//writes zero for non leaf
+		*final_byte = write_bit(0x00, file_data, file_size);
+	}
+
+	write_tree(root->left, file_data, final_byte);
+	write_tree(root->right, file_data, final_byte);
+
+	return file_size;
+}
 
 
+/*
+unsigned char bit: value of bit to be written (1 or 0)
+unsigned char *file_data: block to write full bytes to
+long int size: size of the file in bits so far
+
+return: current state of the next byte to be written
+*/
+unsigned char write_bit(unsigned char bit, unsigned char *file_data, long int size){
+	static unsigned char byte;
+
+	//adds new bit to end of buffer
+	byte = (byte << 1) | (bit & 0x01);
+	if(size % 8 == 0){
+		//writes byte to full upon full buffer
+		file_data = realloc(file_data, size/8);
+		file_data[size/8 - 1] = byte;
+		byte = 0x00;
+	}
+	return byte;
 }
