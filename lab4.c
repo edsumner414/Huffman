@@ -191,10 +191,6 @@ int main(int argc, char *argv[]){
 		Tree = bst_construct();
 		Tree->root = read_tree(reader);
 
-		// char **codes = (char **) malloc(256*sizeof(char *)); // Array of Huffman codes (strings).
-    	// char code[256]; // Temporary buffer.
-		// build_codes(Tree->root, code, 0, codes);
-
 		file_size -= (sizeof(long int) + (tree_size % 8 == 0 ? tree_size/8 : tree_size/8+1));
 		file_data = (unsigned char *)malloc(file_size); 
 		fread(file_data, 1, file_size, og_file);
@@ -600,14 +596,18 @@ tree_node_t *read_tree(bit_reader *reader){
 	unsigned char byte;
 
 	if(read_bit(reader)){
+		printf("1");
 		node->data_ptr = (mydata_t *)malloc(sizeof(mydata_t));
 		for(int i = 0; i < 8; i++){
 			byte = (byte << 1) | read_bit(reader);
 		}
+		printf("%c\n", byte);
 		node->data_ptr[0] = byte;
+		byte = 0x00;
 		node->left = node->right = NULL;
 	}
 	else{
+		printf("0\n");
 		node->data_ptr = NULL;
 		node->left = read_tree(reader);
 		node->right = read_tree(reader);
@@ -617,11 +617,11 @@ tree_node_t *read_tree(bit_reader *reader){
 
 unsigned char read_bit(bit_reader *reader){
 	if(reader->position >= reader->size){
-		printf("\nreached EOF\n\n");
+		printf("\nError: reached end of stream\n\n");
 		exit(0);
 	}
-	int offset = 7 - (reader->position++ % 8);
-    return (reader->file_data[reader->position/8] >> offset) & 0x01;
+	int offset = 7 - (reader->position % 8);
+    return (reader->file_data[reader->position++/8] >> offset) & 0x01;
 }
 
 void decompress_to_file(FILE *new_file, unsigned char *file_data, long int size, tree_node_t *root){
