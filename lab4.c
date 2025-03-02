@@ -437,14 +437,6 @@ char **tree_operations(tree_t *Tree, unsigned char *file_data, long int file_siz
     // 2. sort symbols by ascending frequencies
     bubble_sort(symbols, num_symbols);
 
-    // Debug printing.
-    for (int i = 0; i < num_symbols; i++) {
-	
-	printf("Symbol: %c, Frequency: %d\n", symbols[i].symbol, symbols[i].frequency);
-    }
-    
-    printf("----------");
-
     // 3. each symbol is a node (w/ count)
     tree_node_t **heap = (tree_node_t **) malloc(num_symbols * sizeof(tree_node_t *));
     
