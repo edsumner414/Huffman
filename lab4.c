@@ -26,6 +26,12 @@ typedef struct {
     int frequency;
 } SymbolFrequency;
 
+typedef struct {
+    unsigned char *file_data;
+	long int size;
+    long int position;
+} bit_reader;
+
 
 
 /* BINARY SEARCH TREE DEFINITIONS FROM TREE.H
@@ -68,6 +74,9 @@ long int write_tree(tree_node_t *root, unsigned char *file_data, unsigned char *
 unsigned char write_bit(unsigned char bit, unsigned char *file_data, long int size);
 char **tree_operations(tree_t *Tree, unsigned char *file_data, long int file_size);
 void output_data_to_file(FILE *new_file, unsigned char *file_data, long int file_size, char **codes);
+tree_node_t *read_tree(bit_reader *reader);
+unsigned char read_bit(bit_reader *reader);
+void decompress_to_file(FILE *new_file, unsigned char *file_data, long int size, tree_node_t *root);
 
 
 /* C FUNCTIONS FOR READING AND WRITING
@@ -123,11 +132,10 @@ int main(int argc, char *argv[]){
 		exit(0);
 	}
 
-	file_data = (unsigned char *)malloc(file_size); 
-	fread(file_data, 1, file_size, og_file);
-
 	// COMPRESSING
 	if (strcmp(argv[3], "c") == 0) {
+		file_data = (unsigned char *)malloc(file_size); 
+		fread(file_data, 1, file_size, og_file);
 		
 		Tree = bst_construct();
 		char **codes = tree_operations(Tree, file_data, file_size);
@@ -166,14 +174,42 @@ int main(int argc, char *argv[]){
 		}
 		
 		free(codes);
+		free(file_data);
 	}
 	
 	// DECOMPRESSING
 	else {
-	    
+		bit_reader *reader = (bit_reader *)malloc(sizeof(bit_reader));
+		fread(&tree_size, sizeof(long int), 1, og_file);
+
+		reader->file_data = (unsigned char *)malloc(tree_size/8 + 1);
+		if(tree_size % 8 == 0) fread(reader->file_data, 1, tree_size/8, og_file);
+		else fread(reader->file_data, 1, tree_size/8 + 1, og_file);
+		reader->position = 0;
+		reader->size = tree_size;
+
+		Tree = bst_construct();
+		Tree->root = read_tree(reader);
+
+		// char **codes = (char **) malloc(256*sizeof(char *)); // Array of Huffman codes (strings).
+    	// char code[256]; // Temporary buffer.
+		// build_codes(Tree->root, code, 0, codes);
+
+		file_size -= (sizeof(long int) + (tree_size % 8 == 0 ? tree_size/8 : tree_size/8+1));
+		file_data = (unsigned char *)malloc(file_size); 
+		fread(file_data, 1, file_size, og_file);
+
+		decompress_to_file(new_file, file_data, file_size, Tree->root);
+
+		//free(codes);
+		free(reader->file_data);
+		free(reader);
+		free(file_data);
 	}
 
 	// Destruct the tree.
+	fclose(og_file);
+	fclose(new_file);
 	bst_destruct(Tree);
 
 	return 0;
@@ -513,7 +549,6 @@ return: size of the tree in bits
 */
 long int write_tree(tree_node_t *root, unsigned char *file_data, unsigned char *final_byte){
 	static long int file_size;
-	//static int count;
 
 	if(root == NULL) return 0;
 
@@ -559,3 +594,55 @@ unsigned char write_bit(unsigned char bit, unsigned char *file_data, long int si
 	}
 	return byte;
 }
+
+tree_node_t *read_tree(bit_reader *reader){
+	tree_node_t *node = (tree_node_t *)malloc(sizeof(tree_node_t));
+	unsigned char byte;
+
+	if(read_bit(reader)){
+		node->data_ptr = (mydata_t *)malloc(sizeof(mydata_t));
+		for(int i = 0; i < 8; i++){
+			byte = (byte << 1) | read_bit(reader);
+		}
+		node->data_ptr[0] = byte;
+		node->left = node->right = NULL;
+	}
+	else{
+		node->data_ptr = NULL;
+		node->left = read_tree(reader);
+		node->right = read_tree(reader);
+	}
+	return node;
+}
+
+unsigned char read_bit(bit_reader *reader){
+	if(reader->position >= reader->size){
+		printf("\nreached EOF\n\n");
+		exit(0);
+	}
+	int offset = 7 - (reader->position++ % 8);
+    return (reader->file_data[reader->position/8] >> offset) & 0x01;
+}
+
+void decompress_to_file(FILE *new_file, unsigned char *file_data, long int size, tree_node_t *root){
+	unsigned char *new_data;
+	tree_node_t *rover = root;
+
+	bit_reader *reader = (bit_reader *)malloc(sizeof(bit_reader));
+	reader->position = 0;
+	reader->file_data = file_data;
+	reader->size = size*8;
+
+	for(int i = 0; i < size * 8; i++){
+		if(read_bit(reader)) rover = rover->right;
+		else rover = rover->left;
+
+		if(rover->data_ptr != NULL){
+			fwrite(rover->data_ptr, 1, 1, new_file);
+			rover = root;
+		}
+	}
+
+	free(reader);
+}
+
