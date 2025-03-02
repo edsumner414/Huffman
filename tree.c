@@ -1,10 +1,8 @@
 /* tree.c
  *
  * Carl Tuck
- * cetuck
- * Lab5: Binary Search Tree
- * Version: 1
- * ECE 2230, Fall 2023
+ * Lab 4: Huffman Codec
+ * ECE 4680, Spring 2025
  */
 
 #include <stdlib.h>
@@ -408,7 +406,7 @@ void ugly_print (tree_node_t *Node, int level)
  */
 void bst_debug_print_tree (tree_t *Tree)
 {
-    printf("Tree with %d keys\n", Tree->tree_size);
+    //printf("Tree with %d keys\n", Tree->tree_size);
     ugly_print(Tree->root, 0);
     printf("\n");
     //bst_debug_validate(Tree);
