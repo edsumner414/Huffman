@@ -13,7 +13,6 @@
  */
 
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -95,9 +94,9 @@ int main(int argc, char *argv[]){
 	unsigned char *file_data, *new_data, final_byte;
 	tree_t *Tree;
 
-	
 	// Checking for 4 args and the c or d flag. 	
 	if ((argc != 4) || ((strcmp("c", argv[3]) != 0) && (strcmp("d", argv[3]) != 0))) {
+		
 		printf("Incorrect arguments.\n");
 		printf("Correct Usage: ./lab2 input_file_name output_file_name c\n");
 		printf("               ./lab2 input_file_name output_file_name d\n");
@@ -107,6 +106,7 @@ int main(int argc, char *argv[]){
 	og_file = fopen(argv[1], "rb");
 	
 	if(og_file == NULL){
+		
 		printf("\n\nFailed to open input file\n");
 		exit(0);
 	}
@@ -115,10 +115,10 @@ int main(int argc, char *argv[]){
 	fseek(og_file, 0, SEEK_END);
 	file_size = ftell(og_file);
 	rewind(og_file);
-
-	new_file = fopen(argv[2], "rb+");
+	new_file = fopen(argv[2], "wb+");
 
 	if(new_file == NULL){
+		
 		printf("\n\nFailed to open output file\n");
 		exit(0);
 	}
@@ -134,7 +134,6 @@ int main(int argc, char *argv[]){
 
 		// Need to realloc new_data to fit the actual size.
 		new_data = (unsigned char *) malloc(file_size);
-
 		tree_size = write_tree(Tree->root, new_data, &final_byte);
 		
 		// Realloc once tree size if known.
@@ -148,6 +147,7 @@ int main(int argc, char *argv[]){
 		printf("\nFile Data:\n");
 	
 		for (long int i = 0; i < file_size; i++) {
+		    
 		    unsigned char current_symbol = file_data[i];
 		    printf("Symbol: %c (ASCII: %d), Code: %s\n", current_symbol, current_symbol, codes[current_symbol]);
 		}
@@ -160,6 +160,7 @@ int main(int argc, char *argv[]){
 		for (int i = 0; i < 256; i++) {
 		    
 		    if (codes[i] != NULL) {
+			
 			free(codes[i]);
 		    }
 		}
@@ -181,6 +182,13 @@ int main(int argc, char *argv[]){
 
 
 /* output_data_to_file
+ *
+ * Writes encoded, compressed data to the output file.
+ *
+ * input:   new_file, pointer to the new file
+ *	    file_data, bytes of file data
+ *	    file_size, length of the file in bytes
+ *	    codes, Huffman codes
  */
 void output_data_to_file(FILE *new_file, unsigned char *file_data, long int file_size, char **codes) {
    
@@ -193,6 +201,7 @@ void output_data_to_file(FILE *new_file, unsigned char *file_data, long int file
     int c;
     
     while ((c = fgetc(new_file)) != EOF) {
+	
 	printf("%02x ", (unsigned char) c);
     }
     
@@ -212,10 +221,12 @@ void output_data_to_file(FILE *new_file, unsigned char *file_data, long int file
 	    printf("Processing symbol: %c (ASCII: %d), Code: %s\n", current_symbol, current_symbol, code);
 
 	    for (int j = 0; code[j] != '\0'; j++) {
+		
 		buffer <<= 1;
 	
 		// Setting a 1.
 		if (code[j] == '1') {
+		    
 		    buffer |= 1;
 		}
 
@@ -226,6 +237,7 @@ void output_data_to_file(FILE *new_file, unsigned char *file_data, long int file
 
 		// Buffer is full and can be written to the output file.
 		if (count == 8) {
+		    
 		    printf("Writing byte: 0x%02x\n", buffer);
 		    fwrite(&buffer, sizeof(unsigned char), 1, new_file);
 		    buffer = 0;
@@ -237,6 +249,7 @@ void output_data_to_file(FILE *new_file, unsigned char *file_data, long int file
 
     // Left over bits, requiring a final byte. 
     if (count > 0) {
+	
 	buffer <<= (8 - count);
 
 	// Debug print.
@@ -249,6 +262,7 @@ void output_data_to_file(FILE *new_file, unsigned char *file_data, long int file
     fseek(new_file, 0, SEEK_SET);
     
     while ((c = fgetc(new_file)) != EOF) {
+	
 	printf("%02x ", (unsigned char) c);
     }
     
@@ -265,6 +279,7 @@ void output_data_to_file(FILE *new_file, unsigned char *file_data, long int file
  *	    b, pointer to a SymbolFrequency struct
  */
 void swap(SymbolFrequency *a, SymbolFrequency *b) {
+    
     SymbolFrequency temp = *a;
     *a = *b;
     *b = temp;
@@ -282,12 +297,43 @@ void swap(SymbolFrequency *a, SymbolFrequency *b) {
 void bubble_sort(SymbolFrequency *symbols, int size) {
     
     for (int i = 0; i < size - 1; i++) {
+	
 	for (int j = 0; j < size - i - 1; j++) {
+	    
 	    if (symbols[j].frequency > symbols[j + 1].frequency) {
+		
 		swap(&symbols[j], &symbols[j + 1]);
 	    }
 	}
     }
+}
+
+
+
+/* my_strdup
+ *
+ * Implementation of strdup to get rid of warning.
+ *
+ * input:   str, string to duplicate.
+ *
+ * output:  a string
+ */
+char *my_strdup(const char *str) {
+    
+    if (str == NULL) {
+	
+	return NULL;
+    }
+
+    size_t len = strlen(str) + 1;
+    char *new_str = (char *) malloc(len);
+    
+    if (new_str != NULL) {
+	
+	memcpy(new_str, str, len);
+    }
+
+    return new_str;
 }
 
 
@@ -303,12 +349,16 @@ void bubble_sort(SymbolFrequency *symbols, int size) {
 void build_codes(tree_node_t *node, char *code, int depth, char **codes) {
     
     if (node == NULL) {
+	
 	return;
     }
 
     if (node->left == NULL && node->right == NULL) {
+	
 	code[depth] = '\0';
-	codes[*(node->data_ptr)] = strdup(code);
+	int index = (int) *(node->data_ptr);
+	char *new_code = my_strdup(code);
+	codes[index] = new_code;
 	return;
     }
 
@@ -332,8 +382,11 @@ void build_codes(tree_node_t *node, char *code, int depth, char **codes) {
 void print_codes(char **codes) {
     
     printf("Huffman codes:\n");
+    
     for (int i = 0; i < 256; i++) {
+	
 	if (codes[i] != NULL) {
+	    
 	    printf("Symbol: %c (ASCII: %d), Code: %s\n", (unsigned char) i, i, codes[i]);
 	}
     }
@@ -344,11 +397,13 @@ void print_codes(char **codes) {
 
 /* tree_operations
  *
- * Handles the 9 step process for encoding.
+ * Handles the process for encoding.
  *
  * input:   Tree, pointer to a Tree BST.
  *	    file_data, pointer to bytes of the input file
  *	    file_size, size of the input file
+ *
+ * output:  pointer to an array of strings - the Huffman codes
  */
 char **tree_operations(tree_t *Tree, unsigned char *file_data, long int file_size) {
 
@@ -357,12 +412,14 @@ char **tree_operations(tree_t *Tree, unsigned char *file_data, long int file_siz
     int num_symbols = 0;
 
     for (long int i = 0; i < file_size; i++) {
+	
 	unsigned char current_symbol = file_data[i];
-
 	int found = 0;
 
 	for (int j = 0; j < num_symbols; j++) {
+	    
 	    if (symbols[j].symbol == current_symbol) {
+		
 		symbols[j].frequency++;
 		found = 1;
 		break;
@@ -370,6 +427,7 @@ char **tree_operations(tree_t *Tree, unsigned char *file_data, long int file_siz
 	}
 
 	if (!found) {
+	    
 	    symbols[num_symbols].symbol = current_symbol;
 	    symbols[num_symbols].frequency = 1;
 	    num_symbols++;
@@ -381,13 +439,17 @@ char **tree_operations(tree_t *Tree, unsigned char *file_data, long int file_siz
 
     // Debug printing.
     for (int i = 0; i < num_symbols; i++) {
+	
 	printf("Symbol: %c, Frequency: %d\n", symbols[i].symbol, symbols[i].frequency);
     }
+    
     printf("----------");
 
     // 3. each symbol is a node (w/ count)
     tree_node_t **heap = (tree_node_t **) malloc(num_symbols * sizeof(tree_node_t *));
+    
     for (int i = 0; i < num_symbols; i++) {
+	
 	heap[i] = (tree_node_t *) malloc(sizeof(tree_node_t));
 	heap[i]->key = symbols[i].frequency;
 	heap[i]->data_ptr = (mydata_t *) malloc(sizeof(mydata_t));
@@ -405,15 +467,17 @@ char **tree_operations(tree_t *Tree, unsigned char *file_data, long int file_siz
 	parent->data_ptr = NULL;
 	parent->left = heap[0];
 	parent->right = heap[1];
-
 	heap[0] = parent;
 	heap[1] = heap[num_symbols - 1];
 	num_symbols--;
     
 	// 5. resort parent nodes
 	for (int i = 0; i < num_symbols - 1; i++) {
+	    
 	    for (int j = i + 1; j < num_symbols; j++) {
+		
 		if (heap[i]->key > heap[j]->key) {
+		    
 		    tree_node_t *temp = heap[i];
 		    heap[i] = heap[j];
 		    heap[j] = temp;
@@ -434,7 +498,6 @@ char **tree_operations(tree_t *Tree, unsigned char *file_data, long int file_siz
     char code[256]; // Temporary buffer.
     build_codes(Tree->root, code, 0, codes);
     print_codes(codes);
-
     return codes;
 
 }
