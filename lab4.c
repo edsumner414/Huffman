@@ -283,12 +283,15 @@ void output_data_to_file(FILE *new_file, unsigned char *file_data, long int file
     // Left over bits, requiring a final byte. 
     if (count > 0) {
 	
-	buffer <<= (8 - count);
+		buffer <<= (8 - count);
 
-	// Debug print.
-	printf("Writing final byte: 0x%02x\n", buffer);
-	fwrite(&buffer, sizeof(unsigned char), 1, new_file);
+		// Debug print.
+		printf("Writing final byte: 0x%02x\n", buffer);
+		fwrite(&buffer, sizeof(unsigned char), 1, new_file);
+		count = 8 - count;
     }
+
+	fwrite(&count, 1,1, new_file);
 
     // Printing the file after writing for debugging. 
     printf("File content after writing:\n");
@@ -638,7 +641,8 @@ void decompress_to_file(FILE *new_file, unsigned char *file_data, long int size,
 	reader->file_data = file_data;
 	reader->size = size*8;
 
-	for(int i = 0; i < size * 8; i++){
+	size = (size - 1) * 8 - reader->file_data[size - 1];
+	for(int i = 0; i < size; i++){
 		if(read_bit(reader)) rover = rover->right;
 		else rover = rover->left;
 
