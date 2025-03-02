@@ -149,6 +149,7 @@ int main(int argc, char *argv[]){
 
 		fwrite(&tree_size, sizeof(long int), 1, new_file);
 		fwrite(new_data, 1, tree_size/8, new_file);
+		final_byte <<= 8 - (tree_size % 8);
 		if(tree_size % 8 != 0) fwrite(&final_byte, 1, 1, new_file);
 
 		// Printing file data for debug.
@@ -545,6 +546,10 @@ return: size of the tree in bits
 */
 long int write_tree(tree_node_t *root, unsigned char *file_data, unsigned char *final_byte){
 	static long int file_size;
+
+	if(file_size == 70){
+		printf("hello");
+	}
 
 	if(root == NULL) return 0;
 
