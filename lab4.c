@@ -26,6 +26,7 @@ typedef struct {
     int frequency;
 } SymbolFrequency;
 
+//Structure used for reading file data by bits
 typedef struct {
     unsigned char *file_data;
 	long int size;
@@ -181,8 +182,10 @@ int main(int argc, char *argv[]){
 	// DECOMPRESSING
 	else {
 		bit_reader *reader = (bit_reader *)malloc(sizeof(bit_reader));
+		//finds size of tree data in bits
 		fread(&tree_size, sizeof(long int), 1, og_file);
 
+		//prepares the bit reader structure
 		reader->file_data = (unsigned char *)malloc(tree_size/8 + 1);
 		if(tree_size % 8 == 0) fread(reader->file_data, 1, tree_size/8, og_file);
 		else fread(reader->file_data, 1, tree_size/8 + 1, og_file);
@@ -192,13 +195,12 @@ int main(int argc, char *argv[]){
 		Tree = bst_construct();
 		Tree->root = read_tree(reader);
 
+		//adjusts file size after reading tree data
 		file_size -= (sizeof(long int) + (tree_size % 8 == 0 ? tree_size/8 : tree_size/8+1));
 		file_data = (unsigned char *)malloc(file_size); 
 		fread(file_data, 1, file_size, og_file);
 
 		decompress_to_file(new_file, file_data, file_size, Tree->root);
-
-		//free(codes);
 		free(reader->file_data);
 		free(reader);
 		free(file_data);
@@ -541,7 +543,7 @@ char **tree_operations(tree_t *Tree, unsigned char *file_data, long int file_siz
 
 
 /*
-tree_t *root: root of the huffman tree
+tree_node_t *root: root of the huffman tree
 unsigned char *file_data: block to write full bytes to
 unsigned char *final_byte: contains last few bits if (file_size % 8 != 0)
 
@@ -549,10 +551,6 @@ return: size of the tree in bits
 */
 long int write_tree(tree_node_t *root, unsigned char *file_data, unsigned char *final_byte){
 	static long int file_size;
-
-	if(file_size == 70){
-		printf("hello");
-	}
 
 	if(root == NULL) return 0;
 
@@ -599,23 +597,29 @@ unsigned char write_bit(unsigned char bit, unsigned char *file_data, long int si
 	return byte;
 }
 
+/*
+bit_reader *reader: structure containing file data, file size,
+	and the current bit position of the reader
+
+return: root of the huffman tree
+*/
 tree_node_t *read_tree(bit_reader *reader){
 	tree_node_t *node = (tree_node_t *)malloc(sizeof(tree_node_t));
 	unsigned char byte;
 
 	if(read_bit(reader)){
-		printf("1");
+		//if bit is one, create leaf
 		node->data_ptr = (mydata_t *)malloc(sizeof(mydata_t));
+		//next 8 bits are a character
 		for(int i = 0; i < 8; i++){
 			byte = (byte << 1) | read_bit(reader);
 		}
-		printf("%c\n", byte);
 		node->data_ptr[0] = byte;
 		byte = 0x00;
 		node->left = node->right = NULL;
 	}
 	else{
-		printf("0\n");
+		//if bit is zero, next node is internal
 		node->data_ptr = NULL;
 		node->left = read_tree(reader);
 		node->right = read_tree(reader);
@@ -623,29 +627,48 @@ tree_node_t *read_tree(bit_reader *reader){
 	return node;
 }
 
+/*
+bit_reader *reader: structure containing file data, file size,
+	and the current bit position of the reader
+
+return: value of the bit read (0 or 1)
+*/
 unsigned char read_bit(bit_reader *reader){
 	if(reader->position >= reader->size){
 		printf("\nError: reached end of stream\n\n");
 		exit(0);
 	}
+	//used to find the bit location within the current index
 	int offset = 7 - (reader->position % 8);
     return (reader->file_data[reader->position++/8] >> offset) & 0x01;
 }
 
+/*
+FILE *new_file: file to write decompressed data to
+unsigned char *file_data: compressed file data
+long int size: size of the file data in bytes
+tree_node_t *root: root of the huffman tree for compressed data
+
+return: N/A
+*/
 void decompress_to_file(FILE *new_file, unsigned char *file_data, long int size, tree_node_t *root){
 	unsigned char *new_data;
 	tree_node_t *rover = root;
 
+	//intitialize bit reader with compressed data
 	bit_reader *reader = (bit_reader *)malloc(sizeof(bit_reader));
 	reader->position = 0;
 	reader->file_data = file_data;
 	reader->size = size*8;
 
+	//remove trailing zeros from bit size
 	size = (size - 1) * 8 - reader->file_data[size - 1];
+
 	for(int i = 0; i < size; i++){
 		if(read_bit(reader)) rover = rover->right;
 		else rover = rover->left;
 
+		//if character is found, write to file
 		if(rover->data_ptr != NULL){
 			fwrite(rover->data_ptr, 1, 1, new_file);
 			rover = root;
