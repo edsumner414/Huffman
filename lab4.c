@@ -153,15 +153,6 @@ int main(int argc, char *argv[]){
 		final_byte <<= 8 - (tree_size % 8);
 		if(tree_size % 8 != 0) fwrite(&final_byte, 1, 1, new_file);
 
-		// Printing file data for debug.
-		printf("\nFile Data:\n");
-	
-		for (long int i = 0; i < file_size; i++) {
-		    
-		    unsigned char current_symbol = file_data[i];
-		    printf("Symbol: %c (ASCII: %d), Code: %s\n", current_symbol, current_symbol, codes[current_symbol]);
-		}
-
 		//output data to file here
 		output_data_to_file(new_file, file_data, file_size, codes);
 		
@@ -231,17 +222,16 @@ void output_data_to_file(FILE *new_file, unsigned char *file_data, long int file
     int count = 0; // bits in buffer
 
     // Printing the contents of the file before writing.
-    printf("File contents before writing:\n");
+    //printf("File contents before writing:\n");
     fseek(new_file, 0, SEEK_SET);
     int c;
-    
+   
+    // Removing this debug print, but keeping the seeking operation to work properly.
     while ((c = fgetc(new_file)) != EOF) {
 	
-	printf("%02x ", (unsigned char) c);
+	//printf("%02x ", (unsigned char) c);
     }
     
-    printf("\n");
-
     for (long int i = 0; i < file_size; i++) {
 	
 	// Grabbing one byte at a time from file_data.
@@ -251,9 +241,6 @@ void output_data_to_file(FILE *new_file, unsigned char *file_data, long int file
 	char *code = codes[current_symbol];
 
 	if (code != NULL) {
-
-	    // Debug print.
-	    printf("Processing symbol: %c (ASCII: %d), Code: %s\n", current_symbol, current_symbol, code);
 
 	    for (int j = 0; code[j] != '\0'; j++) {
 		
@@ -267,13 +254,9 @@ void output_data_to_file(FILE *new_file, unsigned char *file_data, long int file
 
 		count++;
 		
-		// Debug print.
-		printf("Bit: %c, Buffer: 0x%02x, Count: %d\n", code[j], buffer, count);
-
 		// Buffer is full and can be written to the output file.
 		if (count == 8) {
 		    
-		    printf("Writing byte: 0x%02x\n", buffer);
 		    fwrite(&buffer, sizeof(unsigned char), 1, new_file);
 		    buffer = 0;
 		    count = 0;
@@ -286,25 +269,19 @@ void output_data_to_file(FILE *new_file, unsigned char *file_data, long int file
     if (count > 0) {
 	
 		buffer <<= (8 - count);
-
-		// Debug print.
-		printf("Writing final byte: 0x%02x\n", buffer);
 		fwrite(&buffer, sizeof(unsigned char), 1, new_file);
 		count = 8 - count;
     }
 
-	fwrite(&count, 1,1, new_file);
-
-    // Printing the file after writing for debugging. 
-    printf("File content after writing:\n");
+    fwrite(&count, 1,1, new_file);
     fseek(new_file, 0, SEEK_SET);
-    
+   
+    // Removing debug print but keeping the seek operation.
     while ((c = fgetc(new_file)) != EOF) {
 	
-	printf("%02x ", (unsigned char) c);
+    	//printf("%02x ", (unsigned char) c);
     }
     
-    printf("\n");
 }
 
 
@@ -475,14 +452,6 @@ char **tree_operations(tree_t *Tree, unsigned char *file_data, long int file_siz
     // 2. sort symbols by ascending frequencies
     bubble_sort(symbols, num_symbols);
 
-    // Debug printing.
-    for (int i = 0; i < num_symbols; i++) {
-	
-	printf("Symbol: %c, Frequency: %d\n", symbols[i].symbol, symbols[i].frequency);
-    }
-    
-    printf("----------");
-
     // 3. each symbol is a node (w/ count)
     tree_node_t **heap = (tree_node_t **) malloc(num_symbols * sizeof(tree_node_t *));
     
@@ -528,14 +497,18 @@ char **tree_operations(tree_t *Tree, unsigned char *file_data, long int file_siz
    
     Tree->root = heap[0];
     free(heap);
-    bst_debug_print_tree(Tree);
+    
+    // Removing debug print of the BST.
+    //bst_debug_print_tree(Tree);
 
     // 7. assign 0-bit to left branches and 1-bit to right branches
     // 8. build varying bit patterns
     char **codes = (char **) calloc(256, sizeof(char *)); // Array of Huffman codes (strings).
     char code[256]; // Temporary buffer.
     build_codes(Tree->root, code, 0, codes);
-    print_codes(codes);
+    
+    // Removing debug print.
+    //print_codes(codes);
     return codes;
 
 }
